@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tessel Web App</title>
+</head>
+<body>
+  <h1>Hello from Tessel!</h1>
+  <p>Press a button to toggle an LED.</p>
+  <ul>
+    <li>
+      <button class="led-button" data-led="2">Green</button>
+      Status: <span class="led-status"></span>
+    </li>
+    <li>
+      <button class="led-button" data-led="3">Blue</button>
+      Status: <span class="led-status"></span>
+    </li>
+  </ul>
+
+  <script type="text/javascript">
+    // Get a NodeList of elements with the class 'led-button'
+    var buttons = document.querySelectorAll('.led-button');
+
+    Array.prototype.forEach.call(buttons, function (button) {
+      button.addEventListener('click', toggleLed);
+    });
+
+    function toggleLed (event) {
+      var button = event.target;
+      var ledIndex = button.getAttribute('data-led');
+      var statusNode = button.parentNode.querySelector('.led-status');
+
+      var req = new XMLHttpRequest();
+
+      req.open('GET', '/leds/' + ledIndex, true);
+
+      req.onload = function(e) {
+        if (req.readyState == 4 && req.status == 200) {
+          if (req.status == 200) {
+            var response = JSON.parse(req.responseText);
+            statusNode.textContent = response.on ? 'ON' : 'OFF';
+          } else { 
+            console.log('Error'); 
+          }
+        }
+      }
+      req.send(null);
+    }
+  </script>
+</body>
+</html>
