@@ -1,6 +1,6 @@
 {
   "name": "tessel-router",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Tessel project",
   "main": "index.js",
   "scripts": {
@@ -11,5 +11,5 @@
     "Tessel"
   ],
   "license": "MIT",
-  "readme": "A bare bones Tessel 2 blinky script."
+  "readme": "A bare bones Tessel 2 web server and web app."
 }
