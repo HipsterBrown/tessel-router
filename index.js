@@ -1,15 +1,24 @@
 // Import the interface to Tessel hardware
 var tessel = require('tessel');
+var pin = tessel.port.A.pin[2];
+var value = 1;
 var http = require('http');
 var fs = require('fs');
 var url = require('url');
+var blinkLoop;
 
 var server = http.createServer(function (request, response) {
   var urlParts = url.parse(request.url, true);
-  var ledRegex = /leds/;
+  var onRegex = /on/;
+  var offRegex = /off/;
+  var blinkRegex = /blink/;
 
-  if (urlParts.pathname.match(ledRegex)) {
-    toggleLED(urlParts.pathname, request, response);
+  if (urlParts.pathname.match(onRegex)) {
+    toggleGemma(urlParts.pathname, request, response, false);
+  } else if (urlParts.pathname.match(offRegex)) {
+    toggleGemma(urlParts.pathname, request, response, true);
+  } else if (urlParts.pathname.match(blinkRegex)) {
+    blinkGemma(urlParts.pathname, request, response);
   } else {
     showIndex(urlParts.pathname, request, response);
   }
@@ -18,6 +27,7 @@ var server = http.createServer(function (request, response) {
 server.listen(8080);
 
 console.log('Server running at http://192.168.1.101:8080/');
+tessel.led[2].toggle();
 
 function showIndex (url, request, response) {
   response.writeHead(200, {"Content-Type": "text/html"});
@@ -30,21 +40,34 @@ function showIndex (url, request, response) {
   });
 }
 
-function toggleLED (url, request, response) {
-  var indexRegex = /(\d)$/;
-  var result = indexRegex.exec(url);
-  var index = +result[1];
+function toggleGemma (url, request, response, toggleOn) {
+  // clear blink loop if blinking
+  clearBlink();
 
-  var led = tessel.led[index];
+  value = toggleOn ? 1 : 0;
+  pin.output(value);
+  console.log(value ? 'On' : 'Off');
 
-  led.toggle(function (err) {
-    if (err) {
-      console.log(err);
-      response.writeHead(500, {"Content-Type": "application/json"});
-      response.end(JSON.stringify({error: err}));
-    } else {
-      response.writeHead(200, {"Content-Type": "application/json"});
-      response.end(JSON.stringify({on: led.isOn}));
-    }
-  });
+  response.writeHead(200, {"Content-Type": "application/json"});
+  response.end();
+}
+
+function blinkGemma (url, request, response) {
+  clearBlink();
+
+  blinkLoop = setInterval(function () {
+    value = value ? 0 : 1;
+    pin.output(value);
+    console.log(value ? 'On' : 'Off');
+  }, 1000);
+
+  response.writeHead(200, {"Content-Type": "application/json"});
+  response.end();
+}
+
+function clearBlink () {
+  if (blinkLoop) {
+    clearInterval(blinkLoop);
+    console.log('Blink cleared');
+  }
 }

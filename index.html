@@ -2,44 +2,101 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Tessel Web App</title>
+  <title>Shirt Controller</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      width: 100%;
+    }
+  </style>
 </head>
 <body>
-  <h1>Hello from Tessel!</h1>
-  <p>Press a button to toggle an LED.</p>
+  <h1>HipsterBrown Shirt's Controller</h1>
+  <p>Press a button to toggle the lights on HipsterBrown's shirt.</p>
   <ul>
     <li>
-      <button class="led-button" data-led="2">Green</button>
-      Status: <span class="led-status"></span>
+      <button class="led-button" data-action="on">On</button>
     </li>
     <li>
-      <button class="led-button" data-led="3">Blue</button>
-      Status: <span class="led-status"></span>
+      <button class="led-button" data-action="off">Off</button>
+    </li>
+    <li>
+      <button class="led-button" data-action="blink">Blink</button>
     </li>
   </ul>
+  <p>
+    Status: <span id="status"></span>
+  </p>
 
   <script type="text/javascript">
     // Get a NodeList of elements with the class 'led-button'
     var buttons = document.querySelectorAll('.led-button');
+    var statusNode = document.getElementById('status');
 
     Array.prototype.forEach.call(buttons, function (button) {
-      button.addEventListener('click', toggleLed);
+      button.addEventListener('click', takeAction);
     });
 
-    function toggleLed (event) {
+    function takeAction (event) {
       var button = event.target;
-      var ledIndex = button.getAttribute('data-led');
-      var statusNode = button.parentNode.querySelector('.led-status');
+      var action = button.getAttribute('data-action');
 
+      switch (action) {
+        case 'on':
+          turnOn();
+          break;
+        case 'off':
+          turnOff();
+          break;
+        case 'blink':
+          blink();
+          break;
+      }
+    }
+
+    function turnOn () {
       var req = new XMLHttpRequest();
 
-      req.open('GET', '/leds/' + ledIndex, true);
+      req.open('GET', '/on', true);
 
       req.onload = function(e) {
         if (req.readyState == 4 && req.status == 200) {
           if (req.status == 200) {
-            var response = JSON.parse(req.responseText);
-            statusNode.textContent = response.on ? 'ON' : 'OFF';
+            statusNode.textContent = 'ON';
+          } else { 
+            console.log('Error'); 
+          }
+        }
+      }
+      req.send(null);
+    }
+
+    function turnOff () {
+      var req = new XMLHttpRequest();
+
+      req.open('GET', '/off', true);
+
+      req.onload = function(e) {
+        if (req.readyState == 4 && req.status == 200) {
+          if (req.status == 200) {
+            statusNode.textContent = 'OFF';
+          } else { 
+            console.log('Error'); 
+          }
+        }
+      }
+      req.send(null);
+    }
+
+    function blink () {
+      var req = new XMLHttpRequest();
+
+      req.open('GET', '/blink', true);
+
+      req.onload = function(e) {
+        if (req.readyState == 4 && req.status == 200) {
+          if (req.status == 200) {
+            statusNode.textContent = 'BLINKING';
           } else { 
             console.log('Error'); 
           }
