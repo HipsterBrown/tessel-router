@@ -12,6 +12,9 @@ var server = http.createServer(function (request, response) {
   var onRegex = /on/;
   var offRegex = /off/;
   var blinkRegex = /blink/;
+  var dlRegex = /download/;
+
+  console.log(urlParts.pathname);
 
   if (urlParts.pathname.match(onRegex)) {
     toggleGemma(urlParts.pathname, request, response, false);
@@ -19,6 +22,8 @@ var server = http.createServer(function (request, response) {
     toggleGemma(urlParts.pathname, request, response, true);
   } else if (urlParts.pathname.match(blinkRegex)) {
     blinkGemma(urlParts.pathname, request, response);
+  } else if (urlParts.pathname.match(dlRegex)) {
+    servePBW(urlParts.pathname, request, response);
   } else {
     showIndex(urlParts.pathname, request, response);
   }
@@ -49,7 +54,7 @@ function toggleGemma (url, request, response, toggleOn) {
   console.log(value ? 'On' : 'Off');
 
   response.writeHead(200, {"Content-Type": "application/json"});
-  response.end();
+  response.end(JSON.stringify({isOn: !!value}));
 }
 
 function blinkGemma (url, request, response) {
@@ -62,7 +67,18 @@ function blinkGemma (url, request, response) {
   }, 1000);
 
   response.writeHead(200, {"Content-Type": "application/json"});
-  response.end();
+  response.end(JSON.stringify({isOn: !!value}));
+}
+
+function servePBW (url, request, response) {
+  fs.readFile(__dirname + '/Heart-Ware_Control.pbw', function (err, content) {
+    if (err) {
+      throw err;
+    }
+
+    response.setHeader('Content-disposition', 'attachment; filename=heart-ware-controller.pbw');
+    response.end(content);
+  });
 }
 
 function clearBlink () {
