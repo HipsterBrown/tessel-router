@@ -11,5 +11,9 @@
     "Tessel"
   ],
   "license": "MIT",
-  "readme": "A bare bones Tessel 2 web server and web app."
+  "readme": "A bare bones Tessel 2 web server and web app.",
+  "dependencies": {
+    "express": "^4.14.0",
+    "socket.io": "^1.5.1"
+  }
 }

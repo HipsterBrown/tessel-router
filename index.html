@@ -2,23 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Tessel Web App</title>
+  <title>Tessel Comms</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body>
+<body style="font-family:Helvertica,sans-serif;">
   <h1>Hello from Tessel!</h1>
   <p>Press a button to toggle an LED.</p>
   <ul>
     <li>
-      <button class="led-button" data-led="2">Green</button>
-      Status: <span class="led-status"></span>
-    </li>
-    <li>
-      <button class="led-button" data-led="3">Blue</button>
-      Status: <span class="led-status"></span>
+      <button class="led-button" data-led="red">Red</button>
+      Status: <span class="led-status">OFF</span>
     </li>
   </ul>
 
+  <script src="/socket.io/socket.io.js"></script>
   <script type="text/javascript">
+    // Get socket.io client
+    var socket = io();
+
     // Get a NodeList of elements with the class 'led-button'
     var buttons = document.querySelectorAll('.led-button');
 
@@ -26,26 +27,22 @@
       button.addEventListener('click', toggleLed);
     });
 
+    socket.on('toggle', function (color) {
+      try {
+        var statusNode = document.querySelector('.led-button[data-led="'+color+'"] .led-status');
+        statusNode.textContent = statusNode.textContent === 'OFF' ? 'ON' : 'OFF';
+      } catch (error) {
+        console.error(error);
+      }
+    });
+
     function toggleLed (event) {
       var button = event.target;
-      var ledIndex = button.getAttribute('data-led');
+      var ledColor = button.getAttribute('data-led');
       var statusNode = button.parentNode.querySelector('.led-status');
 
-      var req = new XMLHttpRequest();
-
-      req.open('GET', '/leds/' + ledIndex, true);
-
-      req.onload = function(e) {
-        if (req.readyState == 4 && req.status == 200) {
-          if (req.status == 200) {
-            var response = JSON.parse(req.responseText);
-            statusNode.textContent = response.on ? 'ON' : 'OFF';
-          } else { 
-            console.log('Error'); 
-          }
-        }
-      }
-      req.send(null);
+      socket.emit('toggle', ledColor);
+      statusNode.textContent = statusNode.textContent === 'OFF' ? 'ON' : 'OFF';
     }
   </script>
 </body>

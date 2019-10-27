@@ -1,50 +1,111 @@
 // Import the interface to Tessel hardware
 var tessel = require('tessel');
 var http = require('http');
-var fs = require('fs');
-var url = require('url');
+var path = require('path');
+var os = require('os');
+var dgram = require('dgram');
+var exec = require('child_process').execSync;
 
-var server = http.createServer(function (request, response) {
-  var urlParts = url.parse(request.url, true);
-  var ledRegex = /leds/;
+var app = require('express')();
+var server = http.Server(app);
+var io = require('socket.io')(server);
 
-  if (urlParts.pathname.match(ledRegex)) {
-    toggleLED(urlParts.pathname, request, response);
-  } else {
-    showIndex(urlParts.pathname, request, response);
+var buttons = {
+  red: tessel.port.A.pin[5]
+};
+
+var leds = {
+  red: tessel.port.B.pin[5]
+};
+
+var indexPath = path.join(__dirname, 'index.html');
+
+app.get('/', (request, response) => {
+  response.sendFile(indexPath);
+});
+
+try {
+  exec('route add -net 224.0.0.0/4 dev wlan0');
+} catch (error) {
+  console.error(error);
+}
+
+tessel.led[2].off();
+
+var PORT = 33333;
+var MULTICAST_ADDRESS = '239.10.10.100';
+
+var state = {
+  red: true
+};
+
+var pub = dgram.createSocket('udp4');
+
+pub.on('message', (message, remote) => {
+  console.log('Message Received!');
+  console.log(`From ${remote.address}:${remote.port}`);
+  // tessel.led[3].toggle();
+
+  var data = JSON.parse(message);
+  console.log(data);
+  if (data.led && data.device !== os.hostname()) {
+    state[data.led] = data.value;
+    leds[data.led].output(data.value);
+    io.emit(data.action, data.led);
   }
 });
 
-server.listen(8080);
+pub.bind(PORT, () => {
+  pub.setBroadcast(true);
+  pub.setMulticastTTL(128);
 
-console.log('Server running at http://192.168.1.101:8080/');
+  try {
+    pub.addMembership(MULTICAST_ADDRESS);
+  } catch (error) {
+    console.error(error);
+  }
+});
 
-function showIndex (url, request, response) {
-  response.writeHead(200, {"Content-Type": "text/html"});
-  fs.readFile(__dirname + '/index.html', function (err, content) {
-    if (err) {
-      throw err;
-    }
+Object.keys(buttons).forEach((color) => {
+  var button = buttons[color];
+  button.on('fall', () => {
+    console.log(`${color} button pressed`);
+    var led = leds[color];
+    var value = state[color];
 
-    response.end(content);
+    state[color] = !value;
+    led.output(!value);
+
+    var data = JSON.stringify({
+      "action": "toggle",
+      "led": color,
+      "device": os.hostname(),
+      "value": !value
+    });
+    pub.send(new Buffer(data), 0, data.length, PORT, MULTICAST_ADDRESS);
   });
-}
+});
 
-function toggleLED (url, request, response) {
-  var indexRegex = /(\d)$/;
-  var result = indexRegex.exec(url);
-  var index = +result[1];
+io.on('connection', (socket) => {
+  socket.on('toggle', (color) => {
+    console.log(color);
 
-  var led = tessel.led[index];
+    var value = state[color];
 
-  led.toggle(function (err) {
-    if (err) {
-      console.log(err);
-      response.writeHead(500, {"Content-Type": "application/json"});
-      response.end(JSON.stringify({error: err}));
-    } else {
-      response.writeHead(200, {"Content-Type": "application/json"});
-      response.end(JSON.stringify({on: led.isOn}));
-    }
+    state[color] = !value;
+    leds[color].output(!value);
+
+    var data = JSON.stringify({
+      "action": "toggle",
+      "led": color,
+      "device": os.hostname(),
+      "value": !value
+    });
+    pub.send(new Buffer(data), 0, data.length, PORT, MULTICAST_ADDRESS);
   });
-}
+});
+
+server.listen(80, () => { 
+  tessel.led[2].on(); 
+  console.log(`Server running at http://${os.hostname()}.local/`);
+});
